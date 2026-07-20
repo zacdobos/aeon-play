@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aeon</title>
+  <style>
+    :root {
+      --panel: #1c1a16; --panel-edge: #4a4132; --gold: #d8b45a; --gold-dim: #a68638; --text: #e8e0cc;
+      --bg: #0d0c0a; --btn: #2b2720; --btn-hi: #3d372a; --danger: #d16a55;
+      --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+      --shadow: 0 4px 14px rgba(0,0,0,0.55);
+    }
+    * { margin: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: var(--serif); overflow: hidden; }
+    #map { position: absolute; inset: 0; }
+    .panel {
+      background: linear-gradient(180deg, #201d18 0%, var(--panel) 100%);
+      border: 1px solid var(--panel-edge); border-radius: 5px; padding: 8px 12px;
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    h1, h2, h3 { font-family: var(--serif); font-weight: 600; }
+    #topbar { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 16px; align-items: center; z-index: 32; white-space: nowrap; padding: 6px 14px; } /* v2.10: above settings (30) so the ☰ dropdown is never buried */
+    #topbar .res { color: var(--gold); }
+    #topbar b { letter-spacing: 0.5px; }
+    #topbar button, #side button, #overlay button, #mapmodes button, #outliner button, #help button, #techpopup button, #cabinet button, #edicts button, #loans button, #missions button, #market button {
+      background: linear-gradient(180deg, var(--btn) 0%, #24211a 100%); color: var(--text);
+      border: 1px solid var(--panel-edge); border-radius: 4px; padding: 3px 10px;
+      font-family: inherit; cursor: pointer; transition: background 0.12s, border-color 0.12s;
+    }
+    #topbar button:hover, #side button:hover, #overlay button:hover, #mapmodes button:hover, #outliner button:hover, #help button:hover, #techpopup button:hover, #cabinet button:hover, #edicts button:hover, #loans button:hover, #missions button:hover, #market button:hover {
+      background: var(--btn-hi); border-color: var(--gold-dim);
+    }
+    #mapmodes button { font-size: 12px; padding: 3px 8px; }
+    #outliner button { font-size: 12px; padding: 2px 8px; }
+    #outliner .ol-item:hover { color: var(--gold); }
+    @media (max-width: 1500px) {
+      #topbar { gap: 9px; font-size: 13px; padding: 5px 10px; }
+      #topbar button { padding: 2px 6px; font-size: 12px; }
+    }
+    @media (max-width: 1240px) {
+      #topbar { gap: 6px; font-size: 12px; }
+      #tb-cabinet, #tb-save { font-size: 11px; }
+    }
+    button.active { background: linear-gradient(180deg, #5a4d2e 0%, #443a22 100%); border-color: var(--gold); color: #fbf3dc; }
+    button:disabled { opacity: 0.45; cursor: default; filter: grayscale(0.6); }
+    button.primary { background: linear-gradient(180deg, #6a5a30 0%, #4a3e22 100%); border-color: var(--gold-dim); color: #f5e9c8; font-size: 15px; padding: 7px 24px; letter-spacing: 0.5px; box-shadow: 0 2px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08); }
+    button.primary:hover { border-color: var(--gold); background: linear-gradient(180deg, #7a6838 0%, #564826 100%); }
+    #side { position: absolute; top: 64px; right: 8px; width: 250px; z-index: 10; display: none;
+      max-height: calc(100vh - 76px); overflow-y: auto; overscroll-behavior: contain; } /* v2.6: the panel outgrew the screen (recruit was unreachable) */
+    .side-x { float: right; margin: -2px -6px 0 6px; font-size: 12px; padding: 1px 7px; opacity: 0.7; position: relative; z-index: 2; }
+    .side-x:hover { opacity: 1; border-color: var(--gold); }
+    #side details.side-sec { margin: 6px 0; }
+    #side details.side-sec summary { cursor: pointer; color: var(--gold); font-size: 13px; letter-spacing: 0.3px; padding: 2px 0; }
+    #side details.side-sec summary:hover { color: #f0d896; }
+    #side h3, #techpopup h3, #cabinet h3 { color: var(--gold); margin-bottom: 4px; letter-spacing: 0.4px; }
+    #side .row, #techpopup .row, #cabinet .row { margin: 6px 0; }
+    .mine-tag { color: var(--gold); font-size: 12px; letter-spacing: 0.5px; }
+    #side .hint { opacity: 0.7; font-size: 12px; font-style: italic; }
+    button.chip { padding: 1px 7px; font-size: 12px; border-radius: 3px; cursor: pointer; }
+    button.chip:hover { border-color: var(--gold); color: var(--gold); }
+    #log { position: absolute; left: 8px; bottom: 8px; width: 340px; max-height: 150px; overflow: hidden; z-index: 10; font-size: 13px; pointer-events: none; }
+    #log div { opacity: 0.9; margin-top: 2px; }
+    #battlecard { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 12; min-width: 340px; display: none; font-size: 13px; pointer-events: none; }
+    #battlecard h3 { color: var(--gold); margin-bottom: 4px; }
+    #battlecard table { width: 100%; border-collapse: collapse; }
+    #battlecard td { padding: 1px 6px; }
+    #battlecard .cas { color: var(--danger); font-size: 12px; }
+    #overlay { position: absolute; inset: 0; background: #060504; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px 12px; overflow-y: auto; }
+    #overlay .overlay-back { position: absolute; top: 16px; left: 16px; z-index: 2; font-size: 14px; padding: 5px 14px; }
+    /* hero art with a heavy vignette so the UI reads over it */
+    #overlay::before { content: ""; position: absolute; inset: 0; background: url('textures/hero.jpg') center / cover no-repeat; opacity: 0.5; pointer-events: none; }
+    #overlay::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 42%, transparent 0%, rgba(6,5,4,0.55) 55%, rgba(6,5,4,0.92) 100%); pointer-events: none; }
+    #overlay > * { position: relative; z-index: 1; animation: overlayRise 0.4s ease-out both; }
+    #overlay > *:nth-child(n+3) { animation-delay: 0.08s; }
+    @keyframes overlayRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    #overlay h1 { color: var(--gold); font-size: 42px; letter-spacing: 6px; }
+    #overlay > p { opacity: 0.85; letter-spacing: 0.5px; }
+    #overlay .nations { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: min(1160px, 96vw); }
+    #overlay .nation-card { width: clamp(168px, 20vw, 210px); min-height: 96px; padding: 14px; cursor: pointer; text-align: center; transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s; }
+    #overlay .nation-card:hover { border-color: var(--gold); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.7), 0 0 18px rgba(216,180,90,0.18), inset 0 1px 0 rgba(255,255,255,0.05); }
+    #overlay .nation-card h3 { letter-spacing: 0.4px; }
+    #overlay .nation-card .ruler { font-size: 13px; opacity: 0.7; font-style: italic; }
+    .wordmark { font-family: var(--serif); font-weight: 600; letter-spacing: 16px; font-size: 62px; color: #e8cd8a;
+      text-shadow: 0 1px 0 #7a5f2a, 0 2px 2px rgba(0,0,0,0.8), 0 4px 30px rgba(216,180,90,0.35); padding-left: 16px; }
+    .tagline { opacity: 0.6; font-style: italic; letter-spacing: 2px; margin-top: -6px; }
+    .rule { width: 220px; height: 1px; border: 0; background: linear-gradient(90deg, transparent, var(--gold-dim), transparent); margin: 2px 0 4px; }
+    #year-picker { width: min(480px, 92vw); text-align: center; padding: 20px; }
+    #year-picker .year-big { font-size: 30px; color: var(--gold); font-family: var(--serif); }
+    #year-picker .year-blurb { font-size: 14px; opacity: 0.85; margin: 4px 0 14px; min-height: 20px; font-style: italic; }
+    #year-picker input[type="range"] { width: 100%; accent-color: var(--gold); margin: 10px 0; }
+    #year-picker input[type="number"] { width: 110px; text-align: center; padding: 5px; background: #2e2a20; border: 1px solid var(--panel-edge); color: var(--text); border-radius: 3px; font-family: inherit; }
+    #year-picker .row { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 10px; }
+    #overlay .or-sep { opacity: 0.5; font-size: 13px; letter-spacing: 2px; }
+    /* welcome / briefing screen (v2.2): two-column, court.jpg backdrop on the hero column */
+    .wc { display: flex; width: min(920px, 94vw); max-height: 88vh; border: 1px solid var(--panel-edge); border-radius: 8px; overflow: hidden; box-shadow: 0 18px 60px rgba(0,0,0,0.75); }
+    .wc-hero { position: relative; flex: 0 0 42%; padding: 30px 26px; display: flex; flex-direction: column; gap: 12px; justify-content: center;
+      background: linear-gradient(160deg, rgba(10,8,6,0.55) 0%, rgba(8,6,5,0.9) 100%), url('textures/court.jpg') center / cover no-repeat, linear-gradient(160deg, #241d13, #14100a); }
+    .wc-wordmark { font-family: var(--serif); font-weight: 600; letter-spacing: 10px; font-size: 26px; color: #e8cd8a; opacity: 0.85; }
+    .wc-realm { font-family: var(--serif); font-size: 32px; color: var(--text); line-height: 1.1; padding-bottom: 6px; display: inline-block; }
+    .wc-sub { font-style: italic; opacity: 0.85; font-size: 15px; }
+    .wc-traits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .wc-trait { font-size: 12px; border: 1px solid var(--panel-edge); border-radius: 3px; padding: 2px 7px; background: rgba(0,0,0,0.35); cursor: help; }
+    .wc-ambition { font-size: 13px; opacity: 0.9; margin-top: auto; padding-top: 8px; }
+    .wc-brief { flex: 1; padding: 26px 26px 22px; background: linear-gradient(180deg, #201d18 0%, var(--panel) 100%); text-align: left; overflow-y: auto; display: flex; flex-direction: column; }
+    .wc-h { color: var(--gold); letter-spacing: 0.5px; margin-bottom: 12px; font-size: 18px; }
+    .wc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin-bottom: 6px; }
+    .wc-cell { display: flex; flex-direction: column; border-bottom: 1px solid rgba(74,65,50,0.5); padding-bottom: 5px; }
+    .wc-k { font-size: 11px; opacity: 0.6; letter-spacing: 0.5px; text-transform: uppercase; }
+    .wc-v { font-size: 15px; color: var(--text); }
+    .wc-mission-box { margin: 12px 0 2px; border: 1px solid var(--gold-dim); border-radius: 5px; padding: 10px 12px; background: rgba(216,180,90,0.06); }
+    .wc-mrow { margin-top: 4px; font-size: 14px; }
+    .wc-mbtn { display: block; width: 100%; text-align: left; margin-top: 6px; }
+    .wc-steps { font-size: 13px; line-height: 1.7; }
+    .wc-steps div { opacity: 0.9; }
+    @media (max-width: 760px) { .wc { flex-direction: column; } .wc-hero { flex-basis: auto; } }
+    /* setup menus adapt to small windows (the wordmark and cards were fixed-size before) */
+    @media (max-width: 900px), (max-height: 720px) {
+      .wordmark { font-size: 40px; letter-spacing: 10px; padding-left: 10px; }
+      #overlay { gap: 10px; }
+      #overlay .nation-card { min-height: 80px; padding: 10px; }
+    }
+    @media (max-height: 560px) {
+      .wordmark { font-size: 28px; letter-spacing: 6px; }
+      #overlay { justify-content: flex-start; }
+    }
+    #hint { position: absolute; bottom: 8px; right: 8px; z-index: 10; font-size: 12px; opacity: 0.55; }
+    #alerts { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); z-index: 9; display: none; gap: 8px; }
+    #alerts .alert { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 4px; padding: 2px 8px; font-size: 12px; box-shadow: var(--shadow); color: var(--text); font-family: inherit; cursor: pointer; }
+    #alerts .alert:hover { border-color: var(--gold); }
+    #toasts { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); z-index: 18; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
+    #toasts .toast { background: var(--panel); border: 1px solid #7a2a22; border-left: 3px solid #e06c5a; border-radius: 4px; padding: 6px 12px; font-size: 13px; color: var(--text); box-shadow: var(--shadow); pointer-events: auto; animation: toastIn 0.18s ease-out; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    #outliner { position: absolute; right: 8px; bottom: 32px; width: 220px; max-height: 46vh; overflow-y: auto; z-index: 10; display: none; font-size: 13px; }
+    #help h3 { color: var(--gold); }
+    #help code { background: #241f18; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    #help .credits { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--panel-edge); font-size: 12px; opacity: 0.75; }
+    /* title screen: hide the in-game chrome behind the overlay */
+    body.overlay-open #topbar, body.overlay-open #mapmodes, body.overlay-open #hint,
+    body.overlay-open #outliner, body.overlay-open #log { display: none !important; }
+    /* ---------- v2.8 premium window chrome: EU4-style framed popups ---------- */
+    #techpopup, #cabinet, #edicts, #loans, #missions, #market, #gov, #ledger {
+      border: 1px solid var(--gold-dim); border-radius: 8px; padding: 0 14px 12px;
+      box-shadow: 0 26px 80px rgba(0,0,0,0.85), 0 0 0 3px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .wtitle {
+      display: block; margin: 0 -14px 10px; padding: 10px 16px 8px;
+      background: linear-gradient(180deg, rgba(216,180,90,0.16), rgba(216,180,90,0.02));
+      border-bottom: 1px solid var(--gold-dim); border-radius: 8px 8px 0 0;
+      color: var(--gold); font-size: 17px; letter-spacing: 0.8px;
+    }
+    #help .wtitle, #side .wtitle { margin: 0 0 8px; border-radius: 0; background: none; padding: 0 0 6px; }
+    /* dossier: nation-colored banner header (v2.8 — "dossiers look like a tack-on") */
+    .dossier-head {
+      margin: 8px -12px 6px; padding: 8px 12px 7px;
+      background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 32%, transparent), transparent 85%);
+      border-top: 1px solid var(--panel-edge); border-bottom: 1px solid var(--panel-edge);
+      border-left: 3px solid var(--nc);
+    }
+    .dossier-head .dh-name { font-family: var(--serif); font-size: 19px; font-weight: 600; color: color-mix(in srgb, var(--nc) 65%, #f0e8d0); letter-spacing: 0.4px; }
+    .dossier-head .dh-ruler { font-style: italic; font-size: 12.5px; opacity: 0.85; }
+    /* v2.8 layout: map modes at the very bottom edge, the log ("chat") above them */
+    #mapmodes { bottom: 8px !important; }
+    #log { bottom: 48px; }
+    body.mapmodes-collapsed #mapmodes button:not(#mm-toggle) { display: none; }
+    /* the outliner dodges an open side panel instead of overlapping it (v2.8) */
+    body.side-open #outliner { right: 268px; max-height: 36vh; }
+    /* v2.11: the WAR! declaration card — the one moment that should feel enormous */
+    .war-popup { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); z-index: 28;
+      width: min(580px, 94vw); text-align: center; padding: 14px 18px 16px;
+      border: 1px solid #7a2a22; border-top: 3px solid #b5342a;
+      box-shadow: 0 30px 90px rgba(0,0,0,0.9), 0 0 50px rgba(181,52,42,0.25), inset 0 1px 0 rgba(255,255,255,0.05);
+      animation: warIn 0.35s cubic-bezier(.2,1.4,.4,1) both; }
+    @keyframes warIn { from { opacity: 0; transform: translateX(-50%) scale(0.92); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+    .war-banner { font-family: var(--serif); font-size: 36px; font-weight: 600; letter-spacing: 6px;
+      color: #e06c5a; text-shadow: 0 2px 2px rgba(0,0,0,0.8), 0 0 26px rgba(181,52,42,0.55); margin: 4px 0 2px; }
+    .war-sub { opacity: 0.9; font-style: italic; font-size: 14px; margin-bottom: 12px; }
+    .war-cols { display: flex; gap: 10px; align-items: stretch; }
+    .war-side { flex: 1; border: 1px solid var(--panel-edge); border-top: 3px solid var(--nc); border-radius: 6px;
+      padding: 10px 8px; background: linear-gradient(180deg, color-mix(in srgb, var(--nc) 20%, transparent), transparent 75%); }
+    .war-name { font-family: var(--serif); font-size: 19px; font-weight: 600; }
+    .war-ruler { font-size: 12px; font-style: italic; opacity: 0.8; min-height: 15px; }
+    .war-str { margin-top: 6px; color: var(--gold); font-size: 13px; }
+    .war-allies { font-size: 12px; margin-top: 4px; opacity: 0.9; }
+    .war-vs { align-self: center; font-family: var(--serif); font-size: 24px; color: #b5342a; }
+    .war-hint { font-size: 12.5px; opacity: 0.8; margin-top: 10px; font-style: italic; }
+  </style>
+  <script type="module" crossorigin src="./assets/index-DMmloQWD.js"></script>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="topbar" class="panel"></div>
+  <div id="goal" class="panel" style="position:absolute;top:60px;left:8px;z-index:10;font-size:13px;max-width:260px;display:none"></div>
+  <div id="techpopup" class="panel" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:15;display:none;max-width:420px"></div>
+  <div id="cabinet" class="panel" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:15;display:none;max-width:460px"></div>
+  <div id="loans" class="panel" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:15;display:none;max-width:360px"></div>
+  <div id="edicts" class="panel" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:15;display:none;max-width:420px"></div>
+  <div id="missions" class="panel" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:15;display:none;max-width:420px"></div>
+  <div id="market" class="panel" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:15;display:none;max-width:420px"></div>
+  <div id="gov" class="panel" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:15;display:none;max-width:520px;max-height:80vh;overflow-y:auto"></div>
+  <div id="ledger" class="panel" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:15;display:none;width:min(720px,94vw);max-height:78vh;overflow-y:auto"></div>
+  <div id="help" class="panel" style="position:absolute;inset:10% 20%;z-index:25;display:none;overflow-y:auto;font-size:14px;line-height:1.5"></div>
+  <div id="side" class="panel"></div>
+  <div id="outliner" class="panel"></div>
+  <div id="alerts"></div>
+  <div id="mapmodes" class="panel" style="position:absolute;left:8px;bottom:170px;z-index:10;display:flex;gap:6px;"></div>
+  <div id="log"></div>
+  <div id="battlecard" class="panel"></div>
+  <div id="hint">click: select province/army &nbsp;·&nbsp; right-click: move army &nbsp;·&nbsp; space: pause &nbsp;·&nbsp; 1/2/3: speed</div>
+  <div id="overlay"></div>
+</body>
+</html>
